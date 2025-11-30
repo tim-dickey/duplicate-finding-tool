@@ -1,7 +1,7 @@
 [project]
 name = "duplicate-finding-tool"
-version = "0.1.0"
-description = "Scan directories for duplicate / near-duplicate text files using shingles + Jaccard similarity"
+version = "0.2.0"
+description = "Scan directories for duplicate / near-duplicate text files using shingles + Jaccard similarity, optional MinHash/LSH prefilter, clustering"
 readme = "README.md"
 authors = [ { name = "Your Name" } ]
 requires-python = ">=3.9"
@@ -11,10 +11,17 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0.0"]
+dev = [
+  "pytest>=7.0.0",
+  "hypothesis>=6.0.0"
+]
 
 [project.scripts]
 duplicate-finder = "duplicate_finder.cli:main"
 
 [tool.pytest.ini_options]
 addopts = "-q"
+markers = [
+  "slow: marks tests as slow (deselect with '-m "not slow"')",
+  "property: property-based tests using Hypothesis",
+]

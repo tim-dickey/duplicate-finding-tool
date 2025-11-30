@@ -9,11 +9,12 @@ Identify exact and near-duplicate files (text / source) within a directory tree.
 - MinHash + LSH prefilter (`--prefilter`) to prune candidate pairs (scales better)
 - Cluster output mode (`--clusters`) groups interconnected duplicates
 - CLI JSON or table output; schema versioned
+- Comprehensive test framework: unit, integration, property tests
 - Extensible: plug in tokenizers, ignore patterns (planned), semantic strategies
 
 ## Installation
 ```
-pip install -e .
+pip install -e .[dev]
 ```
 Requires Python >=3.9.
 
@@ -37,6 +38,24 @@ duplicate-finder scan ./repo --clusters
 Cluster JSON:
 ```
 duplicate-finder scan ./repo --clusters --json
+```
+
+## Testing Framework
+Run full suite:
+```
+pytest
+```
+Run only integration tests:
+```
+pytest tests/integration
+```
+Skip slow tests:
+```
+pytest -m "not slow"
+```
+Run property-based tests (Hypothesis):
+```
+pytest -m property
 ```
 
 ## Similarity Approach
@@ -74,15 +93,28 @@ Artifacts written: `benchmarks/last_profile.md`, `benchmarks/last_profile.json`.
 ```
 src/duplicate_finder/
   __init__.py
-  core.py          # Shingling + similarity + optional prefilter
-  minhash.py       # MinHash signature + LSH candidates
-  cluster.py       # Cluster building
-  index.py         # (future acceleration abstraction)
-  cli.py           # CLI
+  core.py
+  minhash.py
+  cluster.py
+  index.py
+  cli.py
 benchmarks/
   run_benchmarks.py
   run_profile.py
   README.md
+tests/
+  conftest.py
+  unit/
+    test_normalize_tokenize.py
+    test_minhash_lsh.py
+  integration/
+    test_cli_scan.py
+    test_cli_clusters.py
+    test_cli_errors.py
+    test_cli_clusters_table.py
+  test_core.py
+  test_minhash_prefilter.py
+  test_clustering.py
 ```
 
 ## Roadmap (Excerpt)
