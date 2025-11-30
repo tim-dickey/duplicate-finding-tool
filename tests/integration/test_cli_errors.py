@@ -1,5 +1,5 @@
 from click.testing import CliRunner
-from src.duplicate_finder.cli import main
+from duplicate_finder.cli import main
 import json
 
 

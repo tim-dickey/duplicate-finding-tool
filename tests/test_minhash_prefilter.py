@@ -1,4 +1,4 @@
-from src.duplicate_finder.core import DuplicateFinder
+from duplicate_finder.core import DuplicateFinder
 import os
 
 

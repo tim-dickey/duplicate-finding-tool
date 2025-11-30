@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "duplicate-finding-tool"
 version = "0.2.0"
@@ -19,9 +23,15 @@ dev = [
 [project.scripts]
 duplicate-finder = "duplicate_finder.cli:main"
 
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [tool.pytest.ini_options]
 addopts = "-q"
 markers = [
-  "slow: marks tests as slow (deselect with '-m "not slow"')",
+  "slow: marks tests as slow (deselect with '-m \"not slow\"')",
   "property: property-based tests using Hypothesis",
 ]

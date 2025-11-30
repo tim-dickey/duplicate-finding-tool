@@ -1,4 +1,4 @@
-from src.duplicate_finder.core import normalize, tokenize, hashed_shingles
+from duplicate_finder.core import normalize, tokenize, hashed_shingles
 
 def test_normalize_whitespace():
     text = "alpha   beta\n\t gamma"  # multiple spaces + newline + tab

@@ -1,5 +1,5 @@
-from src.duplicate_finder.core import DuplicateFinder
-from src.duplicate_finder.cluster import build_clusters
+from duplicate_finder.core import DuplicateFinder
+from duplicate_finder.cluster import build_clusters
 
 
 def write(fp: str, content: str):

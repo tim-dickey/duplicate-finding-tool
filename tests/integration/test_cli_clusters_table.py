@@ -1,5 +1,5 @@
 from click.testing import CliRunner
-from src.duplicate_finder.cli import main
+from duplicate_finder.cli import main
 
 
 def test_cli_clusters_table(sample_dir):

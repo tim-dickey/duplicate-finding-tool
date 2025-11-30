@@ -1,4 +1,4 @@
-from src.duplicate_finder.minhash import minhash_signature, lsh_candidates
+from duplicate_finder.minhash import minhash_signature, lsh_candidates
 import pytest
 from hypothesis import given, strategies as st
 
