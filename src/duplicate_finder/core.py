@@ -2,8 +2,9 @@ import hashlib
 import os
 import re
 from dataclasses import dataclass
-from typing import Iterable, List, Set, Tuple
+from typing import Iterable, List, Set, Tuple, Optional
 from concurrent.futures import ProcessPoolExecutor
+from .minhash import minhash_signature, lsh_candidates
 
 TOKEN_RE = re.compile(r"[A-Za-z0-9_]+")
 
@@ -85,14 +86,37 @@ class DuplicateFinder:
                     sigs.append(sig)
         return sigs
 
-    def find_duplicates(self, signatures: List[FileSignature]) -> List[Tuple[float, FileSignature, FileSignature]]:
+    def find_duplicates(self, signatures: List[FileSignature], prefilter: bool = False, minhash_perms: int = 64, lsh_bands: int = 16) -> List[Tuple[float, FileSignature, FileSignature]]:
+        n = len(signatures)
+        if n < 2:
+            return []
+        # Determine candidate pairs
+        if prefilter and n > 50:  # threshold to benefit from LSH
+            # Build MinHash signatures
+            mh_sigs = [minhash_signature(sig.shingles, minhash_perms) for sig in signatures]
+            cand_pairs = lsh_candidates(mh_sigs, lsh_bands)
+            # Guarantee we don't miss trivially identical cases by adding exact hash bucket quick path
+            if n < 5000:  # small overhead: add identical shingle set matches
+                shingle_map = {}
+                for idx, sig in enumerate(signatures):
+                    key = tuple(sorted(sig.shingles))
+                    shingle_map.setdefault(key, []).append(idx)
+                for idxs in shingle_map.values():
+                    if len(idxs) > 1:
+                        for i in range(len(idxs)):
+                            for j in range(i+1, len(idxs)):
+                                a, b = idxs[i], idxs[j]
+                                if a > b: a, b = b, a
+                                cand_pairs.add((a, b))
+        else:
+            cand_pairs = {(i, j) for i in range(n) for j in range(i+1, n)}
+
         results: List[Tuple[float, FileSignature, FileSignature]] = []
-        for i in range(len(signatures)):
-            for j in range(i + 1, len(signatures)):
-                a = signatures[i]
-                b = signatures[j]
-                sim = compute_jaccard(a.shingles, b.shingles)
-                if sim >= self.threshold:
-                    results.append((sim, a, b))
+        for i, j in cand_pairs:
+            a = signatures[i]
+            b = signatures[j]
+            sim = compute_jaccard(a.shingles, b.shingles)
+            if sim >= self.threshold:
+                results.append((sim, a, b))
         results.sort(key=lambda x: (-x[0], x[1].path, x[2].path))
         return results

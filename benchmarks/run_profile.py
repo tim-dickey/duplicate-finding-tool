@@ -6,24 +6,35 @@ import statistics
 import time
 from datetime import datetime
 from typing import Dict, Any
-from duplicate_finder.core import DuplicateFinder
+import resource
 
 try:
     import psutil  # optional
 except ImportError:  # pragma: no cover
     psutil = None
 
+from duplicate_finder.core import DuplicateFinder
 
-def profile_run(path: str, extensions, k: int, threshold: float, workers: int) -> Dict[str, Any]:
+
+def _rss_mb() -> float:
+    if psutil:
+        return psutil.Process().memory_info().rss / (1024 * 1024)
+    # Fallback: ru_maxrss is kilobytes on Linux
+    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0
+
+
+def profile_run(path: str, extensions, k: int, threshold: float, workers: int, prefilter: bool) -> Dict[str, Any]:
     finder = DuplicateFinder(k=k, threshold=threshold)
+    rss_start = _rss_mb()
     start = time.perf_counter()
     sig_start = time.perf_counter()
     sigs = finder.scan(path, extensions, workers=workers)
     sig_elapsed = time.perf_counter() - sig_start
     pairs_start = time.perf_counter()
-    pairs = finder.find_duplicates(sigs)
+    pairs = finder.find_duplicates(sigs, prefilter=prefilter)
     pairs_elapsed = time.perf_counter() - pairs_start
     total_elapsed = time.perf_counter() - start
+    rss_end = _rss_mb()
     return {
         "files": len(sigs),
         "duplicate_pairs": len(pairs),
@@ -32,6 +43,10 @@ def profile_run(path: str, extensions, k: int, threshold: float, workers: int) -
         "total_time": total_elapsed,
         "files_per_sec": (len(sigs) / total_elapsed) if total_elapsed else 0.0,
         "workers": workers,
+        "prefilter": prefilter,
+        "rss_start_mb": rss_start,
+        "rss_end_mb": rss_end,
+        "rss_diff_mb": rss_end - rss_start,
     }
 
 
@@ -45,16 +60,22 @@ def write_artifacts(markdown: str, json_data: Dict[str, Any], out_dir: str):
     return md_path, json_path
 
 
-def format_markdown(results_serial, results_parallel, meta):
+def format_markdown(results_serial, results_parallel, meta, results_prefilter):
     def fmt(r):
-        return f"Files: {r['files']} | Pairs: {r['duplicate_pairs']} | Total: {r['total_time']:.3f}s | Sig: {r['signature_time']:.3f}s | Comp: {r['comparison_time']:.3f}s | Files/sec: {r['files_per_sec']:.1f} | Workers: {r['workers']}"
+        return (
+            f"Files: {r['files']} | Pairs: {r['duplicate_pairs']} | Total: {r['total_time']:.3f}s | "
+            f"Sig: {r['signature_time']:.3f}s | Comp: {r['comparison_time']:.3f}s | Files/sec: {r['files_per_sec']:.1f} | "
+            f"Workers: {r['workers']} | Prefilter: {r['prefilter']} | RSSΔ: {r['rss_diff_mb']:.2f}MB"
+        )
     lines = [
         f"# Profiling Report", "", f"Date: {meta['date']}", f"Python: {meta['python']}", f"Platform: {meta['platform']}", f"CPU Count: {meta['cpus']}", "",
         "## Parameters", f"Path: {meta['path']}", f"Extensions: {', '.join(meta['extensions'])}", f"k: {meta['k']}", f"Threshold: {meta['threshold']}", f"Parallel Workers Tested: {meta['parallel_workers']}", "",
-        "## Results", "### Serial", fmt(results_serial), "", "### Parallel", fmt(results_parallel), "",
+        "## Results", "### Serial", fmt(results_serial), "", "### Parallel", fmt(results_parallel), "", "### Prefilter (Parallel Signature, MinHash+LSH)", fmt(results_prefilter), "",
     ]
     speedup = (results_serial['total_time'] / results_parallel['total_time']) if results_parallel['total_time'] else 0
+    prefilter_speedup = (results_serial['total_time'] / results_prefilter['total_time']) if results_prefilter['total_time'] else 0
     lines.append(f"Speedup (serial/parallel): {speedup:.2f}x")
+    lines.append(f"Speedup (serial/prefilter): {prefilter_speedup:.2f}x")
     return "\n".join(lines) + "\n"
 
 
@@ -74,9 +95,11 @@ def main():
 
     serial_runs = []
     parallel_runs = []
+    prefilter_runs = []
     for _ in range(args.repeat):
-        serial_runs.append(profile_run(args.path, extensions, args.k, args.threshold, args.serial_workers))
-        parallel_runs.append(profile_run(args.path, extensions, args.k, args.threshold, args.parallel_workers))
+        serial_runs.append(profile_run(args.path, extensions, args.k, args.threshold, args.serial_workers, prefilter=False))
+        parallel_runs.append(profile_run(args.path, extensions, args.k, args.threshold, args.parallel_workers, prefilter=False))
+        prefilter_runs.append(profile_run(args.path, extensions, args.k, args.threshold, args.parallel_workers, prefilter=True))
 
     def aggregate(runs):
         agg = {}
@@ -91,6 +114,7 @@ def main():
 
     results_serial = aggregate(serial_runs)
     results_parallel = aggregate(parallel_runs)
+    results_prefilter = aggregate(prefilter_runs)
 
     meta = {
         "date": datetime.utcnow().isoformat(timespec='seconds') + 'Z',
@@ -104,8 +128,8 @@ def main():
         "parallel_workers": args.parallel_workers,
     }
 
-    markdown = format_markdown(results_serial, results_parallel, meta)
-    combined = {"meta": meta, "serial": results_serial, "parallel": results_parallel}
+    markdown = format_markdown(results_serial, results_parallel, meta, results_prefilter)
+    combined = {"meta": meta, "serial": results_serial, "parallel": results_parallel, "prefilter": results_prefilter}
 
     os.makedirs(args.out_dir, exist_ok=True)
     md_path, json_path = write_artifacts(markdown, combined, args.out_dir)
