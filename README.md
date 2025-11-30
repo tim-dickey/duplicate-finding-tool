@@ -127,6 +127,7 @@ schema/
   duplicates.schema.json
 .github/workflows/
   ci.yml
+LICENSE
 ```
 
 ## Roadmap (Excerpt)
@@ -139,4 +140,4 @@ schema/
 Open issues focused on a single feature/performance improvement. Include benchmark deltas when relevant. PRs run full test suite via CI.
 
 ## License
-(Select a license and add a LICENSE file; none included yet.)
+MIT License - see [LICENSE](LICENSE) file for details.
