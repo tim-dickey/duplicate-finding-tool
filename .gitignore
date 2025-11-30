@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.build/
+.dist/
+.eggs/
+.installed.cfg
+.pytest_cache/
+.coverage*
+htmlcov/
+.mypy_cache/
+.cache/
+.env
+venv/
+.env*/
+# Editors
+.vscode/
+.idea/
+# Packaging
+*.egg
+# Logs
+*.log
