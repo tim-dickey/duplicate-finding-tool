@@ -2,7 +2,8 @@ import hashlib
 import os
 import re
 from dataclasses import dataclass
-from typing import Iterable, List, Set, Tuple, Dict
+from typing import Iterable, List, Set, Tuple
+from concurrent.futures import ProcessPoolExecutor
 
 TOKEN_RE = re.compile(r"[A-Za-z0-9_]+")
 
@@ -43,6 +44,16 @@ class FileSignature:
     shingles: Set[int]
     size: int
 
+def _compute_file_signature(args):
+    path, k = args
+    try:
+        text = normalize(read_file(path))
+        tokens = tokenize(text)
+        sh = hashed_shingles(tokens, k)
+        return FileSignature(path=path, shingles=sh, size=len(tokens))
+    except Exception:
+        return None
+
 class DuplicateFinder:
     def __init__(self, k: int = 5, threshold: float = 0.85):
         self.k = k
@@ -59,23 +70,19 @@ class DuplicateFinder:
                     out.append(fp)
         return out
 
-    def _signature(self, path: str) -> FileSignature:
-        text = normalize(read_file(path))
-        tokens = tokenize(text)
-        sh = hashed_shingles(tokens, self.k)
-        return FileSignature(path=path, shingles=sh, size=len(tokens))
-
-    def scan(self, root: str, extensions: Iterable[str], min_tokens: int = 0) -> List[FileSignature]:
+    def scan(self, root: str, extensions: Iterable[str], min_tokens: int = 0, workers: int = 0) -> List[FileSignature]:
         files = self._gather_files(root, extensions)
         sigs: List[FileSignature] = []
-        for f in files:
-            try:
-                sig = self._signature(f)
-                if sig.size >= min_tokens:
+        if workers and workers > 1:
+            with ProcessPoolExecutor(max_workers=workers) as ex:
+                for sig in ex.map(_compute_file_signature, [(f, self.k) for f in files]):
+                    if sig and sig.size >= min_tokens:
+                        sigs.append(sig)
+        else:
+            for f in files:
+                sig = _compute_file_signature((f, self.k))
+                if sig and sig.size >= min_tokens:
                     sigs.append(sig)
-            except Exception:
-                # Skip unreadable files silently for MVP
-                continue
         return sigs
 
     def find_duplicates(self, signatures: List[FileSignature]) -> List[Tuple[float, FileSignature, FileSignature]]:
