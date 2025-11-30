@@ -8,8 +8,9 @@ Identify exact and near-duplicate files (text / source) within a directory tree.
 - Parallel signature scan (`--workers`) for larger corpora
 - MinHash + LSH prefilter (`--prefilter`) to prune candidate pairs (scales better)
 - Cluster output mode (`--clusters`) groups interconnected duplicates
-- CLI JSON or table output; schema versioned
-- Comprehensive test framework: unit, integration, property tests
+- CLI JSON or table output; schema versioned and documented
+- Comprehensive test framework: unit, integration, property, performance tests
+- CI via GitHub Actions (multi-version Python)
 - Extensible: plug in tokenizers, ignore patterns (planned), semantic strategies
 
 ## Installation
@@ -53,10 +54,22 @@ Skip slow tests:
 ```
 pytest -m "not slow"
 ```
+Run slow performance tests:
+```
+pytest -m slow -v
+```
 Run property-based tests (Hypothesis):
 ```
 pytest -m property
 ```
+
+## CI/CD
+GitHub Actions runs tests on Python 3.9-3.12 for every push/PR. Slow tests run only on main branch pushes.
+
+## JSON Output Schema
+See [`docs/json-schema.md`](docs/json-schema.md) for complete schema documentation and versioning policy.
+
+Validate output with [`schema/duplicates.schema.json`](schema/duplicates.schema.json) (JSON Schema draft-07).
 
 ## Similarity Approach
 1. Normalize whitespace.
@@ -105,27 +118,25 @@ benchmarks/
 tests/
   conftest.py
   unit/
-    test_normalize_tokenize.py
-    test_minhash_lsh.py
   integration/
-    test_cli_scan.py
-    test_cli_clusters.py
-    test_cli_errors.py
-    test_cli_clusters_table.py
-  test_core.py
-  test_minhash_prefilter.py
-  test_clustering.py
+  performance/
+  test_*.py
+docs/
+  json-schema.md
+schema/
+  duplicates.schema.json
+.github/workflows/
+  ci.yml
 ```
 
 ## Roadmap (Excerpt)
 - Ignore patterns / region filtering
-- Formal JSON schema docs
 - Parallel pairwise comparison
 - MinHash parameter tuning
 - Semantic duplicate detection (embeddings)
 
 ## Contributing
-Open issues focused on a single feature/performance improvement. Include benchmark deltas when relevant.
+Open issues focused on a single feature/performance improvement. Include benchmark deltas when relevant. PRs run full test suite via CI.
 
 ## License
 (Select a license and add a LICENSE file; none included yet.)
