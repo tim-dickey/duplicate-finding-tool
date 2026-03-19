@@ -4,11 +4,23 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "duplicate-finding-tool"
-version = "0.2.0"
+version = "0.3.0"
 description = "Scan directories for duplicate / near-duplicate text files using shingles + Jaccard similarity, optional MinHash/LSH prefilter, clustering"
 readme = "README.md"
-authors = [ { name = "Your Name" } ]
+license = { text = "MIT" }
+authors = [ { name = "Tim Dickey" } ]
 requires-python = ">=3.9"
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Topic :: Text Processing",
+  "Topic :: Utilities",
+]
 dependencies = [
   "click>=8.1.0",
   "tqdm>=4.66.0"
@@ -16,9 +28,15 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-  "pytest>=7.0.0",
-  "hypothesis>=6.0.0"
+  "pytest>=7.4.0",
+  "hypothesis>=6.0.0",
+  "ruff>=0.4.0",
+  "mypy>=1.8.0",
 ]
+
+[project.urls]
+"Homepage" = "https://github.com/tim-dickey/duplicate-finding-tool"
+"Bug Tracker" = "https://github.com/tim-dickey/duplicate-finding-tool/issues"
 
 [project.scripts]
 duplicate-finder = "duplicate_finder.cli:main"
@@ -35,3 +53,16 @@ markers = [
   "slow: marks tests as slow (deselect with '-m \"not slow\"')",
   "property: property-based tests using Hypothesis",
 ]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = []
+
+[tool.mypy]
+python_version = "3.9"
+strict = false
+warn_unused_ignores = true

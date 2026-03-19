@@ -2,17 +2,19 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
-.build/
-.dist/
+build/
+dist/
 .eggs/
 .installed.cfg
 .pytest_cache/
-.coverage*
+.coverage
+.coverage.*
 htmlcov/
 .mypy_cache/
 .cache/
 .env
 venv/
+.venv/
 .env*/
 # Editors
 .vscode/
@@ -21,3 +23,6 @@ venv/
 *.egg
 # Logs
 *.log
+# OS
+.DS_Store
+Thumbs.db
