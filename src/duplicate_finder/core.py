@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import os
 import re
 from dataclasses import dataclass
@@ -6,29 +7,38 @@ from typing import Iterable, List, Set, Tuple, Optional
 from concurrent.futures import ProcessPoolExecutor
 from .minhash import minhash_signature, lsh_candidates
 
+logger = logging.getLogger(__name__)
+
 TOKEN_RE = re.compile(r"[A-Za-z0-9_]+")
+
 
 def read_file(path: str) -> str:
     with open(path, "r", encoding="utf-8", errors="ignore") as f:
         return f.read()
 
+
 def normalize(text: str) -> str:
     return " ".join(text.split())
 
+
 def tokenize(text: str) -> List[str]:
     return TOKEN_RE.findall(text)
+
 
 def make_shingles(tokens: List[str], k: int = 5) -> List[Tuple[str, ...]]:
     if k <= 0 or len(tokens) < k:
         return []
     return [tuple(tokens[i:i+k]) for i in range(len(tokens) - k + 1)]
 
+
 def shingle_hash(shingle: Tuple[str, ...]) -> int:
     h = hashlib.md5("::".join(shingle).encode("utf-8")).hexdigest()
     return int(h, 16)
 
+
 def hashed_shingles(tokens: List[str], k: int = 5) -> Set[int]:
     return {shingle_hash(s) for s in make_shingles(tokens, k)}
+
 
 def compute_jaccard(a: Set[int], b: Set[int]) -> float:
     if not a and not b:
@@ -39,24 +49,28 @@ def compute_jaccard(a: Set[int], b: Set[int]) -> float:
     union = len(a | b)
     return inter / union if union else 0.0
 
+
 @dataclass
 class FileSignature:
     path: str
     shingles: Set[int]
     size: int
 
-def _compute_file_signature(args):
+
+def _compute_file_signature(args: Tuple[str, int]) -> Optional["FileSignature"]:
     path, k = args
     try:
         text = normalize(read_file(path))
         tokens = tokenize(text)
         sh = hashed_shingles(tokens, k)
         return FileSignature(path=path, shingles=sh, size=len(tokens))
-    except Exception:
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Skipping %s: %s", path, exc)
         return None
 
+
 class DuplicateFinder:
-    def __init__(self, k: int = 5, threshold: float = 0.85):
+    def __init__(self, k: int = 5, threshold: float = 0.85) -> None:
         self.k = k
         self.threshold = threshold
 
@@ -71,7 +85,13 @@ class DuplicateFinder:
                     out.append(fp)
         return out
 
-    def scan(self, root: str, extensions: Iterable[str], min_tokens: int = 0, workers: int = 0) -> List[FileSignature]:
+    def scan(
+        self,
+        root: str,
+        extensions: Iterable[str],
+        min_tokens: int = 0,
+        workers: int = 0,
+    ) -> List[FileSignature]:
         files = self._gather_files(root, extensions)
         sigs: List[FileSignature] = []
         if workers and workers > 1:
@@ -86,30 +106,35 @@ class DuplicateFinder:
                     sigs.append(sig)
         return sigs
 
-    def find_duplicates(self, signatures: List[FileSignature], prefilter: bool = False, minhash_perms: int = 64, lsh_bands: int = 16) -> List[Tuple[float, FileSignature, FileSignature]]:
+    def find_duplicates(
+        self,
+        signatures: List[FileSignature],
+        prefilter: bool = False,
+        minhash_perms: int = 64,
+        lsh_bands: int = 16,
+    ) -> List[Tuple[float, FileSignature, FileSignature]]:
         n = len(signatures)
         if n < 2:
             return []
         # Determine candidate pairs
-        if prefilter and n > 50:  # threshold to benefit from LSH
-            # Build MinHash signatures
+        if prefilter and n > 50:
             mh_sigs = [minhash_signature(sig.shingles, minhash_perms) for sig in signatures]
             cand_pairs = lsh_candidates(mh_sigs, lsh_bands)
-            # Guarantee we don't miss trivially identical cases by adding exact hash bucket quick path
-            if n < 5000:  # small overhead: add identical shingle set matches
-                shingle_map = {}
+            if n < 5000:
+                shingle_map: dict = {}
                 for idx, sig in enumerate(signatures):
                     key = tuple(sorted(sig.shingles))
                     shingle_map.setdefault(key, []).append(idx)
                 for idxs in shingle_map.values():
                     if len(idxs) > 1:
                         for i in range(len(idxs)):
-                            for j in range(i+1, len(idxs)):
+                            for j in range(i + 1, len(idxs)):
                                 a, b = idxs[i], idxs[j]
-                                if a > b: a, b = b, a
+                                if a > b:
+                                    a, b = b, a
                                 cand_pairs.add((a, b))
         else:
-            cand_pairs = {(i, j) for i in range(n) for j in range(i+1, n)}
+            cand_pairs = {(i, j) for i in range(n) for j in range(i + 1, n)}
 
         results: List[Tuple[float, FileSignature, FileSignature]] = []
         for i, j in cand_pairs:
