@@ -6,7 +6,7 @@ We're here to help! Here's how to get support for the Duplicate Finding Tool.
 
 ### GitHub Discussions (Recommended for Questions)
 
-Use [GitHub Discussions](https://github.com/tdickey/duplicate-finding-tool/discussions) for:
+Use [GitHub Discussions](https://github.com/tim-dickey/duplicate-finding-tool/discussions) for:
 - General questions about usage
 - How-to questions
 - Best practices and tips
@@ -16,7 +16,7 @@ This is the best place for community-driven answers and conversations.
 
 ### GitHub Issues (For Bugs and Feature Requests)
 
-Use [GitHub Issues](https://github.com/tdickey/duplicate-finding-tool/issues) for:
+Use [GitHub Issues](https://github.com/tim-dickey/duplicate-finding-tool/issues) for:
 - **Confirmed bugs** - reproducible issues with the code
 - **Feature requests** - proposals for new functionality
 - Please use the provided templates
